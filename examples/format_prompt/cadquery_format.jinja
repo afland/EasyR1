@@ -1,0 +1,5 @@
+{{ content | trim }} Your goal is to generate CADQuery code that recreates the object in the images. FIRST, reason about how to recreate the object. The reasoning process MUST be enclosed in <think> </think> tags. Then provide the complete CADQuery code in <answer> </answer> tags. You MUST put the final object in the `r` variable. Assume we have already executed `import cadquery as cq`, so DO NOT import `cadquery`. Here is an example: 
+<answer>
+example_box = cq.Workplane("XY").box(2, 2, 2)
+r = example_box.faces(">Z").workplane().hole(1)
+</answer>
