@@ -169,10 +169,11 @@ class FSDPWorker(Worker):
             pad_token_id=self.tokenizer.pad_token_id,
             **model_config.override_config,
         )
-
-        if isinstance(self.model_config.text_config, dict):
-            from transformers import PretrainedConfig
-            self.model_config.text_config = PretrainedConfig.from_dict(self.model_config.text_config)
+        
+        # Attempted config fix:
+        #if isinstance(self.model_config.text_config, dict):
+        #   from transformers import PretrainedConfig
+        #   self.model_config.text_config = PretrainedConfig.from_dict(self.model_config.text_config)
 
         try:
             self.generation_config = GenerationConfig.from_pretrained(model_config.model_path)
