@@ -201,7 +201,7 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
                 output_dir = os.path.expanduser('~/npys')
                 os.makedirs(output_dir, exist_ok=True)
                 file_path_gt = os.path.join(output_dir, f'{random_id}_gt.npy')
-                file_path_pr = os.path.join(output_dir, f'{random_id}_pr.npy')
+                file_path_pr = os.path.join(output_dir, f'{random_id}_{accuracy_score:.2f}_pr.npy')
                 np.save(file_path_gt, gt_points)
                 np.save(file_path_pr, pred_points)
         except Exception as e:
