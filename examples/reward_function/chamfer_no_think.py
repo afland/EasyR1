@@ -196,6 +196,7 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
             print(f"Success! Accuracy score: {accuracy_score}")
             print(f"Good CAD code:\n{predict}")
             if accuracy_score > 0.92:
+                np.set_printoptions(threshold=np.inf)
                 print(f"Ground truth: {gt_points}")
         except Exception as e:
             print(f"Error processing CAD code: {e}")
