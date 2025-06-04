@@ -6,6 +6,7 @@ import trimesh
 import multiprocessing
 import re
 import os
+import uuid
 
 def normalize_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
     """Apply standard transformations to normalize the mesh to unit cube.
@@ -195,9 +196,14 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
             compilation_score = 1.0
             print(f"Success! Accuracy score: {accuracy_score}")
             print(f"Good CAD code:\n{predict}")
-            if accuracy_score > 0.92:
-                np.set_printoptions(threshold=np.inf)
-                print(f"Ground truth: {gt_points}")
+            if accuracy_score > 0.8:
+                random_id = str(uuid.uuid4())
+                output_dir = os.path.expanduser('~/npys')
+                os.makedirs(output_dir, exist_ok=True)
+                file_path_gt = os.path.join(output_dir, f'{random_id}_gt.npy')
+                file_path_pr = os.path.join(output_dir, f'{random_id}_pr.npy')
+                np.save(file_path_gt, gt_points)
+                np.save(file_path_pr, pred_points)
         except Exception as e:
             print(f"Error processing CAD code: {e}")
 
