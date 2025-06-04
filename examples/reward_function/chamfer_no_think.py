@@ -125,7 +125,7 @@ def cadquery_to_pointcloud(cadquery_code: str, n_points: int = 8192) -> np.ndarr
         np.ndarray: Point cloud of shape (n_points, 3)
     """
     # Execute the CADQuery code and get tessellated vertices/faces
-    vertices, faces = execute_cadquery_code(cadquery_code, timeout_seconds=0.2) # Increased timeout for safety with process overhead
+    vertices, faces = execute_cadquery_code(cadquery_code, timeout_seconds=0.5) # Increased timeout for safety with process overhead
     
     # Convert CADQuery shape to mesh using tessellate
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces) # Construct Trimesh from returned data
@@ -194,9 +194,9 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
             accuracy_score = chamfer_reward(pred_points, gt_points, alpha=11)
             compilation_score = 1.0
             print(f"Success! Accuracy score: {accuracy_score}")
+            print(f"Good CAD code:\n{predict}")
         except Exception as e:
             print(f"Error processing CAD code: {e}")
-            print(f"Problematic CAD code:\n{predict}")
 
         scores.append({
             "overall": compilation_score * format_weight + (1 - format_weight) * accuracy_score,

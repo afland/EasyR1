@@ -38,7 +38,7 @@ class GenerationLogger(ABC):
 class ConsoleGenerationLogger(GenerationLogger):
     def log(self, samples: List[Tuple[str, str, str, float]], step: int) -> None:
         for inp, out, lab, score in samples:
-            print(f"[prompt] {inp}\n[output] {out}\n[ground_truth] {lab}\n[score] {score}\n")
+            print(f"[prompt] {inp}\n[output] {out}\n[score] {score}\n")
 
 
 @dataclass
