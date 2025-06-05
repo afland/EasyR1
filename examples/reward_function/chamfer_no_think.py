@@ -18,11 +18,6 @@ def normalize_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
     Returns:
         trimesh.Trimesh: Transformed mesh centered in unit cube with max dimension = 1
     """
-    # Current transformations (commented out)
-    # mesh.apply_transform(trimesh.transformations.scale_matrix(1 / 100 / 2))
-    # mesh.apply_transform(trimesh.transformations.translation_matrix([0.5, 0.5, 0.5]))
-    
-    # Center at origin and scale to fit in unit cube
     mesh.apply_translation(-(mesh.bounds[0] + mesh.bounds[1]) / 2.0)  # Center at origin
     mesh.apply_scale(2.0 / max(mesh.extents))  # Scale to fit in unit cube
     
@@ -79,7 +74,8 @@ class CADQueryWorkerPool:
         if max_workers is None:
             # For Intel Xeon Platinum 8480 with 56 cores, we can use more workers
             # but cap at 32 to avoid excessive overhead
-            max_workers = min(16, multiprocessing.cpu_count())
+            max_workers = min(32, multiprocessing.cpu_count())
+        print(f"Using {max_workers} workers for CADQuery batch execution")
         
         self.max_workers = max_workers
         self.timeout_seconds = timeout_seconds
@@ -98,6 +94,7 @@ class CADQueryWorkerPool:
     def execute_batch(self, cadquery_codes: List[str]) -> Tuple[List[Tuple[bool, Any]], int]:
         """
         Execute a batch of CADQuery code strings in parallel.
+        Divides into smaller batches equal to worker count to prevent blocking.
         
         Args:
             cadquery_codes: List of CADQuery code strings
@@ -107,80 +104,64 @@ class CADQueryWorkerPool:
                 - List of (success, result) tuples
                 - Integer count of timeouts in this batch
         """
-        # Submit all tasks
-        futures = []
-        for code in cadquery_codes:
-            future = self.executor.submit(_execute_cadquery_worker, code)
-            futures.append(future)
+        all_results = []
+        total_timeout_count = 0
         
-        # Collect results with timeout handling
-        results = []
-        timed_out_futures = []
-        timeout_count = 0
+        # Process in smaller batches to prevent blocking
+        for i in range(0, len(cadquery_codes), self.max_workers):
+            minibatch = cadquery_codes[i:i + self.max_workers]
+            
+            # Submit all tasks in this batch
+            futures = []
+            for code in minibatch:
+                future = self.executor.submit(_execute_cadquery_worker, code)
+                futures.append(future)
+            
+            # Collect results with timeout handling
+            minibatch_results = []
+            timed_out_futures = []
+            minibatch_timeout_count = 0
+            
+            for future in futures:
+                try:
+                    result = future.result(timeout=self.timeout_seconds)
+                    minibatch_results.append(result)
+                except ConcurrentTimeoutError:
+                    minibatch_timeout_count += 1
+                    minibatch_results.append((False, f"CADQuery execution timed out after {self.timeout_seconds} seconds"))
+                    timed_out_futures.append(future)
+                except Exception as e:
+                    minibatch_results.append((False, f"CADQuery execution failed: {str(e)}"))
+            
+            # Add batch results to overall results
+            all_results.extend(minibatch_results)
+            total_timeout_count += minibatch_timeout_count
+            
+            # If any timeouts occurred, restart workers for next batch
+            if minibatch_timeout_count > 0:
+                self._start_executor()
         
-        for future in futures:
-            try:
-                result = future.result(timeout=self.timeout_seconds)
-                results.append(result)
-            except ConcurrentTimeoutError:
-                timeout_count += 1
-                results.append((False, f"CADQuery execution timed out after {self.timeout_seconds} seconds"))
-                timed_out_futures.append(future)
-            except Exception as e:
-                results.append((False, f"CADQuery execution failed: {str(e)}"))
-        
-        # If we had timeouts, we need to restart the executor to clean up hung processes
-        if timed_out_futures:
-            for future in timed_out_futures:
-                future.cancel()
-            self._start_executor()
-        
-        return results, timeout_count
+        return all_results, total_timeout_count
     
     def shutdown(self):
         """Shutdown the worker pool."""
         if self.executor is not None:
             self.executor.shutdown(wait=False)
             self.executor = None
-    
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown()
 
-# Global worker pool instance
-_global_worker_pool = None
-
-def get_worker_pool() -> CADQueryWorkerPool:
-    """Get or create the global worker pool."""
-    global _global_worker_pool
-    if _global_worker_pool is None:
-        _global_worker_pool = CADQueryWorkerPool()
-    return _global_worker_pool
-
-def shutdown_worker_pool():
-    """Shutdown the global worker pool."""
-    global _global_worker_pool
-    if _global_worker_pool is not None:
-        _global_worker_pool.shutdown()
-        _global_worker_pool = None
-
-
-def cadquery_codes_to_pointclouds_batch(cadquery_codes: List[str], n_points: int = 8192) -> Tuple[List[Optional[np.ndarray]], int]:
+def cadquery_codes_to_pointclouds_batch(cadquery_codes: List[str]) -> Tuple[List[Optional[np.ndarray]], int]:
     """Convert a batch of CADQuery codes to point clouds efficiently.
     
     Args:
         cadquery_codes: List of CADQuery code strings
-        n_points: Number of points to sample from each surface
         
     Returns:
         A tuple containing:
-            - List of point clouds (np.ndarray of shape (n_points, 3)) or None if failed
             - Integer count of timeouts in this batch
     """
-    pool = get_worker_pool()
+    pool = CADQueryWorkerPool()
     results, timeout_count = pool.execute_batch(cadquery_codes)
+    pool.shutdown()
     
     point_clouds = []
     for success, result_data in results:
@@ -192,7 +173,7 @@ def cadquery_codes_to_pointclouds_batch(cadquery_codes: List[str], n_points: int
                 mesh = normalize_mesh(mesh)
                 
                 # Sample points from the surface
-                points, _ = trimesh.sample.sample_surface(mesh, n_points)
+                points, _ = trimesh.sample.sample_surface(mesh, 4096)
                 point_clouds.append(points)
             except Exception as e:
                 point_clouds.append(None)
@@ -210,7 +191,7 @@ def chamfer_reward(pred_points: np.ndarray, gt_points: np.ndarray, alpha: float 
     cd = compute_chamfer_distance(pred_points, gt_points)
     return np.exp(-alpha * cd)
 
-def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_weight: float = 0.2) -> List[Dict[str, float]]:
+def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_weight: float = 0.1) -> List[Dict[str, float]]:
     """Compute scores for a list of predictions and ground truths using batch processing.
     
     Args:
@@ -225,7 +206,6 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
             - accuracy: Chamfer-based reward (0.0 if compilation fails).
     """
     
-    # Process all CADQuery codes in parallel
     pred_point_clouds, timeout_count = cadquery_codes_to_pointclouds_batch(predicts)
     
     # Compute scores
@@ -238,7 +218,7 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
 
         if pred_points is not None:
             success_count += 1
-            accuracy_score = chamfer_reward(pred_points, gt_points, alpha=12)
+            accuracy_score = chamfer_reward(pred_points, gt_points, alpha=40)
             compilation_score = 1.0
 
         scores.append({
@@ -247,7 +227,7 @@ def compute_score(predicts: List[str], ground_truths: List[np.ndarray], format_w
             "accuracy": accuracy_score
         })
     
-    print("Batch processing completed!")
+    print("Batch reward processing completed!")
     print(f"{success_count}/{len(predicts)} successful")
     print(f"{timeout_count}/{len(predicts)} timed out")
     return scores
