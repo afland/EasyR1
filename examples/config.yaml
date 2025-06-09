@@ -58,6 +58,7 @@ worker:
     enable_chunked_prefill: false
     tensor_parallel_size: 2
     limit_images: 0
+    max_num_batched_tokens: 13000
     val_override_config:
       temperature: 0.5
       n: 1
@@ -82,11 +83,11 @@ trainer:
   logger: ["console", "wandb"]
   nnodes: 1
   n_gpus_per_node: 8
-  val_freq: 5  # -1 to disable
+  val_freq: 20  # -1 to disable
   val_before_train: true
   val_only: false
   val_generations_to_log: 3
-  save_freq: 5  # -1 to disable
+  save_freq: 20  # -1 to disable
   save_limit: 3  # -1 to disable
   save_checkpoint_path: null
   load_checkpoint_path: null

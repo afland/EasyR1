@@ -122,9 +122,12 @@ class CADQueryWorkerPool:
             timed_out_futures = []
             minibatch_timeout_count = 0
             
-            for future in futures:
+            for i, future in enumerate(futures):
+                # Give first task full timeout, others get minimal timeout to collect completed results
+                timeout = self.timeout_seconds if i == 0 else 0.1
+                
                 try:
-                    result = future.result(timeout=self.timeout_seconds)
+                    result = future.result(timeout=timeout)
                     minibatch_results.append(result)
                 except ConcurrentTimeoutError:
                     minibatch_timeout_count += 1

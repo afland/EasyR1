@@ -4,7 +4,8 @@ set -x
 
 export PYTHONUNBUFFERED=1
 
-MODEL_PATH=jereminuer/qwen25_vl_3b_sft
+# MODEL_PATH=jereminuer/qwen25_vl_3b_sft
+MODEL_PATH=afland/mentis-qwen2.5-vl-3b-grpo-step80
 
 python3 -m verl.trainer.main \
     config=examples/config.yaml \
