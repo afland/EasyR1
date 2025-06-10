@@ -211,6 +211,6 @@ class RLHFDataset(Dataset, ImageProcessMixin):
         example["position_ids"] = position_ids
         example["raw_prompt_ids"] = raw_prompt_ids
         # example["ground_truth"] = np.array(example.pop(self.answer_key))
-        example["ground_truth"] = np.load(BytesIO(example.pop(self.answer_key)))
+        example["ground_truth"] = (example.pop("obj_id"), example.pop("turn"), np.load(BytesIO(example.pop(self.answer_key))))
         # example["ground_truth"] = example.pop(self.answer_key)
         return example
