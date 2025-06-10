@@ -210,6 +210,8 @@ def compute_score(predicts: List[str], ground_truths: List[Tuple[Any, Any, np.nd
             - accuracy: Chamfer-based reward (0.0 if compilation fails).
     """
 
+    print(f"Computing reward for {len(predicts)} predictions")
+
     pred_point_clouds, timeout_count = cadquery_codes_to_pointclouds_batch(predicts)
 
     # Compute scores

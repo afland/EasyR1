@@ -6,8 +6,8 @@ data:
   image_key: images
   max_prompt_length: 10000
   max_response_length: 2048
-  rollout_batch_size: 256 
-  val_batch_size: 1024
+  rollout_batch_size: 512 
+  val_batch_size: 256
   format_prompt: ./examples/format_prompt/cadquery_no_think_format.jinja
   override_chat_template: null
   shuffle: true
@@ -73,7 +73,7 @@ worker:
 
   reward:
     reward_type: batch
-    reward_function: ./examples/reward_function/chamfer_no_think.py:compute_score
+    reward_function: ./examples/reward_function/chamfer_benchmark.py:compute_score
 
 trainer:
   total_epochs: 3
