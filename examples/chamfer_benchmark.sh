@@ -9,8 +9,8 @@ MODEL_PATH=afland/mentis-qwen2.5-vl-3b-grpo-step80
 
 python3 -m verl.trainer.main \
     config=examples/config.yaml \
-    data.train_files=shalunov/fusion360-normal-map.parquet[0%:1%] \
-    data.val_files=shalunov/fusion360-normal-map.parquet \
+    data.train_files=shalunov/mentis-fusion360-normal-map-public@train[0%:5%] \
+    data.val_files=shalunov/mentis-fusion360-normal-map-public@train \
     worker.actor.model.model_path=${MODEL_PATH} \
     worker.rollout.tensor_parallel_size=1 \
     trainer.experiment_name=qwen2_5_vl_3b_cadquery_no_think_grpo \
