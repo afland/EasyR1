@@ -25,6 +25,36 @@ def normalize_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
     return mesh
 
 
+def normalize_points(points: np.ndarray) -> np.ndarray:
+    """Apply standard transformations to normalize point cloud to unit cube.
+    
+    Args:
+        points: Input point cloud as numpy array of shape (N, 3)
+        
+    Returns:
+        np.ndarray: Transformed points centered in unit cube with max dimension = 1
+    """
+    # Calculate bounds: min and max for each dimension
+    min_bounds = np.min(points, axis=0)
+    max_bounds = np.max(points, axis=0)
+    
+    # Center at origin (equivalent to mesh bounds calculation)
+    center = (min_bounds + max_bounds) / 2.0
+    points_centered = points - center
+    
+    # Calculate extents (size in each dimension)
+    extents = max_bounds - min_bounds
+    
+    # Scale to fit in unit cube (equivalent to mesh scaling)
+    max_extent = np.max(extents)
+    if max_extent > 0:  # Avoid division by zero
+        points_scaled = points_centered * (2.0 / max_extent)
+    else:
+        points_scaled = points_centered
+    
+    return points_scaled
+
+
 def _execute_cadquery_worker(code: str) -> Tuple[bool, Any]:
     """
     Worker function that executes CADQuery code and tessellates the result.
@@ -177,7 +207,8 @@ def cadquery_codes_to_pointclouds_batch(cadquery_codes: List[str]) -> Tuple[List
                 mesh = normalize_mesh(mesh)
                 
                 # Sample points from the surface
-                points, _ = trimesh.sample.sample_surface(mesh, 8192)
+                # points, _ = trimesh.sample.sample_surface(mesh, 8192)
+                points = mesh.sample(8192)
                 point_clouds.append(points)
             except Exception as e:
                 point_clouds.append(None)
@@ -220,7 +251,8 @@ def compute_score(predicts: List[str], ground_truths: List[Tuple[Any, Any, np.nd
     success_count = 0
     chamfer_distances = []
     
-    for predict, pred_points, (obj_id, turn, gt_points) in zip(predicts, pred_point_clouds, ground_truths):
+    for predict, pred_points, (obj_id, turn, gt_points_unnormalized) in zip(predicts, pred_point_clouds, ground_truths):
+        gt_points = normalize_points(gt_points_unnormalized)
         accuracy_score = 0.0
         compilation_score = 0.0
         chamfer_distance = -1.0
@@ -268,7 +300,7 @@ def compute_score(predicts: List[str], ground_truths: List[Tuple[Any, Any, np.nd
         mean_chamfer_distance = np.mean(chamfer_distances)
         print(f"Mean chamfer distance: {mean_chamfer_distance:.6f}")
         median_chamfer_distance = np.median(chamfer_distances)
-        print(f"Median chamfer distance: {median_chamfer_distance:.6f}")
+        print(f"Median chamfer distance: {np.median(chamfer_distances):.6f}")
     else:
         print("Mean chamfer distance: N/A (no successful compilations)")
     print(f"Results saved to {results_json_path}")
