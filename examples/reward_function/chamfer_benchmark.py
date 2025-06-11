@@ -247,8 +247,19 @@ def compute_score(predicts: List[str], ground_truths: List[Tuple[Any, Any, np.nd
     # Always save to ~/benchmark_results.json
     import os
     results_json_path = os.path.expanduser('~/benchmark_results.json')
+    
+    # Load existing results if file exists, otherwise start with empty list
+    if os.path.exists(results_json_path):
+        with open(results_json_path, 'r') as f:
+            existing_results = json.load(f)
+    else:
+        existing_results = []
+    
+    # Append new results to existing ones
+    existing_results.extend(json_results)
+    
     with open(results_json_path, 'w') as f:
-        json.dump(json_results, f, indent=4)
+        json.dump(existing_results, f, indent=4)
     
     print("Batch reward processing completed!")
     print(f"{success_count}/{len(predicts)} successful")

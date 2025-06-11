@@ -6,7 +6,7 @@ data:
   image_key: images
   max_prompt_length: 10000
   max_response_length: 2048
-  rollout_batch_size: 512 
+  rollout_batch_size: 1024 
   val_batch_size: 256
   format_prompt: ./examples/format_prompt/cadquery_no_think_format.jinja
   override_chat_template: null
@@ -80,7 +80,7 @@ trainer:
   max_steps: null
   project_name: easy_r1
   experiment_name: qwen2_5_7b_math_grpo
-  logger: ["console", "wandb"]
+  logger: ["console"] # ["console", "wandb"]
   nnodes: 1
   n_gpus_per_node: 8
   val_freq: 20  # -1 to disable
