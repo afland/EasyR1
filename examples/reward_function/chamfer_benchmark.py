@@ -267,6 +267,8 @@ def compute_score(predicts: List[str], ground_truths: List[Tuple[Any, Any, np.nd
     if chamfer_distances:
         mean_chamfer_distance = np.mean(chamfer_distances)
         print(f"Mean chamfer distance: {mean_chamfer_distance:.6f}")
+        median_chamfer_distance = np.median(chamfer_distances)
+        print(f"Median chamfer distance: {median_chamfer_distance:.6f}")
     else:
         print("Mean chamfer distance: N/A (no successful compilations)")
     print(f"Results saved to {results_json_path}")
